@@ -92,27 +92,47 @@
 
 本实验使用[Stanford Large Network Dataset Collection](https://snap.stanford.edu/data/index.html) 的真实图数据集，覆盖从小规模到大规模的多种场景。
 
-| 数据规模 | 数据集名称                        | 数据集描述              | 数据集地址                                                                                                                                                                                      | 顶点数  | 边数   | 文件大小 (解压后)    |
-|------|:-----------------------------|:-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----|:-----|:--------------|
-| 小    | **Web-Google**               | 2002年Google网页链接图   | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/web-Google.txt.gz](https://snap.stanford.edu/data/web-Google.txt.gz)</div>                           | 875k | 5.1M | 20.2MB(78MB)  |
-| 中    | **soc-Pokec**                | Slovakia在线社交网络     | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/soc-pokec-relationships.txt.gz](https://snap.stanford.edu/data/soc-pokec-relationships.txt.gz)</div> | 1.6M | 31M  | 126MB(404MB)  |
-| 大    | **LiveJournal**              | LiveJournal用户好友关系图 | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz](https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz)</div>               | 4.8M | 69M  | 248MB(1.01GB) |
-| 大    | **Twitter follower network** | Twitter用户关注关系图     | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/twitter-2010.txt.gz](https://snap.stanford.edu/data/twitter-2010.txt.gz)</div>                       | 41M  | 1.4B | 5.1GB         |
+
+| 数据规模 | 数据集名称     | 数据集描述                         | 数据集地址                                                                                                                                     | 顶点数   | 边数    | 文件大小 | 特性说明                                                                 |
+|----------|----------------|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------|--------------------|--------------------------------------------------------------------------|
+| 小       | **Web-Google**     | 2002年Google网页链接图             | [https://snap.stanford.edu/data/web-Google.txt.gz](https://snap.stanford.edu/data/web-Google.txt.gz)                                           | 875k     | 5.1M    | 78MB      | 典型网页图：具有高度偏斜的入度分布（枢纽页面现象），平均出度较低（约5.8），适合初步验证框架基本功能。 |
+| 中       | **soc-Pokec**      | Slovakia在线社交网络               | [https://snap.stanford.edu/data/soc-pokec-relationships.txt.gz](https://snap.stanford.edu/data/soc-pokec-relationships.txt.gz)                 | 1.6M     | 31M     | 404MB      | 高密度社交图：边密度较高（平均度约18.8），入度与出度均显著偏斜，挑战并行系统的负载均衡与通信效率。 |
+| 大       | **LiveJournal**    | LiveJournal用户好友关系图          | [https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz](https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz)                               | 4.8M     | 69M     | 1.01GB     | 大规模超级节点：出度偏斜极高（76.0），易引发 MapReduce 的热点键问题或 Giraph 的内存压力，用于性能评测。 |
+
 
 #### 3.2.2 工作负载
 
-**PageRank参数设置：**  **此处待修正和补充**
+**PageRank参数设置：** 
 *   **阻尼系数 (Damping Factor)：** 0.85
-*   **最大迭代次数 (Max Iterations)：** 10 或 11 (根据收敛情况)
-*   **收敛阈值：** 0.0001
+*   **最大迭代次数 (Max Iterations)：** 100
+*   **收敛阈值：** 1e-4 
 
 ### 3.3 实验步骤
 
 #### 3.3.1 环境部署与验证
+
+Hadoop集群：
+<p align="center">
+  <img src="img/init/hadoop.jpg">
+  <br>
+  <em>Hadoop集群展示</em>
+</p>
+Node展示：
+<p align="center">
+  <img src="img/init/node.jpg">
+  <br>
+  <em>Node展示</em>
+</p>
+
+
 启动Hadoop集群与Giraph环境，确保节点间通信正常。
 
-**[此处插入截图：Hadoop JPS 进程截图（包含 NameNode, ResourceManager, DataNode, NodeManager）]**
-*图 1：集群节点进程运行状态*
+
+<p align="center">
+  <img src="img/init/hadoop_jps.png">
+  <br>
+  <em>集群节点进程运行状态</em>
+</p>
 
 #### 3.3.2 MapReduce PageRank 运行
 执行MapReduce作业，监控Job链的执行情况。由于MapReduce每次迭代是一个独立的Job，控制台会输出一系列Job ID。
@@ -154,6 +174,32 @@
 #### 3.4.3 系统资源监控分析
 
 通过监控工具记录作业运行期间的资源使用情况。
+
+##### I/O监控对比
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="img/MapReduce_S2_Figure/disk_write_mbs.png">
+        <br>
+        <em>MapReduce磁盘写入</em>
+      </td>
+      <td align="center">
+        <img src="img/Giraph_S2_Figure/disk_write_mbs.png" >
+        <br>
+        <em>Giraph磁盘写入</em>
+      </td>
+    </tr>
+  </table>
+</p>
+
+**分析：** MapReduce呈现典型的“锯齿状”磁盘I/O波峰，对应每轮Map的读取和Reduce的写入。Giraph则在计算过程中磁盘I/O极低，但在Superstep同步阶段会出现网络流量峰值。
+
+##### Memory监控对比
+
+*   **MapReduce：** 内存使用呈波浪形，Job结束即释放，不依赖内存容量大小。
+*   **Giraph：** 内存使用呈“梯形”，加载数据后一直维持高位直到作业结束，说明Giraph是典型的“空间换时间”策略，其性能和有效性取决
 
 **[此处插入图表：内存与 I/O 监控时序图]**
 
