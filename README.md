@@ -1,57 +1,21 @@
-# PageRank 算法在 Giraph 与 MapReduce 中的对比分析
+# PageRank算法在Giraph与MapReduce中的对比分析
 
 ```
 .
-├── code/                   # 核心实现代码
-│   ├── giraph/             # Giraph版本的PageRank算法实现
-│   └── mapreduce/          # MapReduce版本的PageRank算法实现
+├── code/                              # 核心代码目录
+│   ├── PageRankGiraph/                # 基于Giraph的PageRank算法实现
+│   │   ├── src/main/java/edu/practice/pagerank    # Java源代码
+│   │   ├── target/                    # 编译后的输出目录
+│   │   ├── pom.xml                    # 依赖配置文件
+│   │   └── run_pagerank.sh            # Giraph运行脚本
+│   │
+│   └── PageRankMapReduce/             # 基于MapReduce的PageRank算法实现
+│   │   ├── src/main/java/edu/practice/pagerank    # Java源代码
+│   │   ├── target/                    # 编译后的输出目录
+│   │   └── pom.xml                    # 依赖配置文件
 │
-├── Analysis/               # 实验数据、脚本与结果分析
-│   │
-│   ├── Giraph_S1/          # Giraph小规模数据集场景(Web-Google)
-│   │   ├── metrics_node100.csv # 节点100的资源监控原始数据
-│   │   ├── metrics_node101.csv # ...
-│   │   ├── ...
-│   │   └── metrics_node105.csv # 节点105的资源监控原始数据
-│   │
-│   ├── Giraph_S1_Figure/   # Giraph小规模数据集场景的分析图表与摘要
-│   │   ├── cpu_iowait.png       # CPU的IO等待时间图
-│   │   ├── cpu_usage.png        # CPU利用率图
-│   │   ├── disk_write_mbs.png   # 写磁盘监控图
-│   │   ├── memory_used_gb.png   # 内存使用量图
-│   │   ├── network_send_mbs.png # 网络使用图
-│   │   └── summary.csv          # 该场景下性能指标的摘要数据
-│   │
-│   ├── Giraph_S2/          # Giraph中规模数据集场景(soc-Pokec)
-│   ├── Giraph_S2_Figure/   # Giraph中规模数据集场景的分析图表与摘要
-│   ├── Giraph_S3/          # Giraph大规模数据集场景(LiveJournal)
-│   ├── Giraph_S3_Figure/   # Giraph大规模数据集场景的分析图表与摘要
-│   │
-│   ├── MapReduce_S1/       # MapReduce小规模数据集场景(Web-Google)
-│   │   ├── metrics_node100.csv
-│   │   ├── ...
-│   │   ├── metrics_node105.csv
-│   │   └── performance_report.txt # MapReduce性能分析脚本生成的文本报告
-│   │
-│   ├── MapReduce_S1_Figure/ # MapReduce小规模数据集场景的分析图表与分析报告
-│   │   ├── cpu_iowait.png
-│   │   ├── cpu_usage.png
-│   │   ├── disk_write_mbs.png
-│   │   ├── memory_used_gb.png
-│   │   ├── network_send_mbs.png
-│   │   └── summary.csv
-│   │
-│   ├── MapReduce_S2/        # MapReduce中规模数据集场景(soc-Pokec)
-│   ├── MapReduce_S2_Figure/ # MapReduce中规模数据集场景的分析图表与分析报告
-│   ├── MapReduce_S3/        # MapReduce大规模数据集场景(LiveJournal)
-│   ├── MapReduce_S3_Figure/ # MapReduce大规模数据集场景的分析图表与分析报告
-│   │
-│   ├── cluster_monitor.sh            # 用于在集群各节点收集资源利用率数据
-│   ├── plot_cpu.py                   # 绘制CPU使用率、IO等待等相关图表
-│   ├── plot_gantte_giraph.py         # 绘制Giraph任务执行的甘特图
-│   └── plot_mapreduce_performance.py # 分析MapReduce日志并生成性能图表和报告
-│
-└── README.md               # 项目核心说明文档
+├── img/                               # 存放README文档引用的图片资源
+└── README.md                          # 项目说明文档
 ```
 
 ## 1. 研究目的
@@ -136,40 +100,100 @@ Node展示：
 
 #### 3.3.2 MapReduce PageRank 运行
 执行MapReduce作业，监控Job链的执行情况。由于MapReduce每次迭代是一个独立的Job，控制台会输出一系列Job ID。
-
-**[此处插入截图：MapReduce 连续提交 Job 的控制台日志截图]**
-*图 2：MapReduce迭代过程中的Job提交日志*
+<p align="center">
+  <img src="img/init/mapreduce_run.png">
+  <br>
+  <em>MapReduce运行示意图</em>
+</p>
 
 #### 3.3.3 Giraph PageRank 运行
-执行Giraph作业，监控Superstep的执行进度。
+执行Giraph作业，监控执行情况。
 
-**[此处插入截图：Giraph 作业执行成功的最终日志（显示 Total time 和 Supersteps 信息）]**
-*图 3：Giraph作业执行完成信息（Web-Google数据集示例：Total time ≈ 29.4s）*
+<p align="center">
+  <img src="img/init/giraph_run.png">
+  <br>
+  <em>Giraph执行情况示意图</em>
+</p>
+
 
 ### 3.4 实验结果与分析
 
-**<u>待贴图，MapReduce和Giraph两种分布式架构算法执行流程</u>**
-
 #### 3.4.1 迭代开销与总耗时对比
 
-在中等规模数据集下，我们分别记录MapReduce每次迭代（即每个 Job）的启动、Map、Shuffle和Reduce时间，以及Giraph运行整个作业的Setup时间、每个Superstep的计算时间、通信时间。
+在小、中、大三种规模数据集下，我们分别记录MapReduce每次迭代的启动、Map、Reduce(含shuffle)和IO执行时间，以及Giraph运行整个作业的Setup、每个Superstep的运行时间。
 
-**[此处插入图表：全流程时间轴对比图 (Gantt-style) 或 堆叠柱状图]**
+* **Mapreduce**
+<p align="center">
+  <img src="img/Experiment341/mapreduce_small_performance.png">
+  <br>
+  <em>MapReduce在小规模数据集下的迭代结果</em>
+</p>
+
+<p align="center">
+  <img src="img/Experiment341/mapreduce_media_performance.png">
+  <br>
+  <em>MapReduce在中规模数据集下的迭代结果</em>
+</p>
+
+<p align="center">
+  <img src="img/Experiment341/mapreduce_large_performance.png">
+  <br>
+  <em>MapReduce在大规模数据集下的迭代结果</em>
+</p>
 
 **分析：**
-*   **MapReduce的瓶颈：** 实验结果显示，MapReduce在每一次迭代之间存在显著的“间隙”。这是因为每次迭代都需要重新启动JVM (Job Setup)、调度资源，并在迭代结束时将中间结果写入HDFS(Disk I/O)。这种“启停式”工作流导致了巨大的系统开销。
-*   **Giraph的优势：** 相比之下，Giraph仅在作业开始时加载一次图数据（Graph Loading）。随后的Supersteps中，所有计算均在内存中进行，且利用BSP模型仅在Superstep结束时进行必要的网络同步。
-*   **数据佐证：** 在Web-Google数据集上，Giraph完成11轮迭代仅耗时 **29.4秒**，平均每轮计算+同步仅需 **1.5-2秒**；而MapReduce单次迭代的启动和I/O开销往往就超过了这一数值。
+
+  * 小规模数据集下的表现：I/O 延迟为主导
+    - 结果概况：小规模数据集上，MapReduce 的时间流水线呈现出显著的“低计算密度”特征。IO占比最为突出，显著长于Map和Reduce阶段。
+    - 讨论：由于实际需要计算的数据量很小，计算逻辑快速完成，MapReduce 框架的固有管理开销（初始化、同步、落盘）占据了主导地位，此时表现为“框架受限（Framework-bound）”而非“计算受限”。
+  * 扩展至中、大规模数据集的变化：计算耗时掩盖 I/O 开销
+    - 结果概况：随着数据规模扩展至大规模，图表中几乎看不到黄色的 IO 条带，取而代之的是极宽的 Map 和 Reduce 计算条带，总迭代时间大幅拉长（达到约 110秒），但时间主要在计算阶段中。
+    - 讨论：大规模数据下，Mapper 需要处理海量的节点计算，Reducer 需要聚合庞大的边权重，导致CPU 计算时间大幅膨胀。因此，虽然绝对的 I/O 数据量增加了，但相对于被极大拉长的计算/处理时间，框架的调度与合并开销被摊薄了，此时，系统的瓶颈逐渐向“计算/处理能力受限”转移。
+
+* **Giraph**
+* 
+<p align="center">
+  <img src="img/Experiment341/giraph_small_performance.png">
+  <br>
+  <em>Giraph在小规模数据集下的迭代结果</em>
+</p>
+
+<p align="center">
+  <img src="img/Experiment341/giraph_media_performance.png">
+  <br>
+  <em>Giraph在中规模数据集下的迭代结果</em>
+</p>
+
+<p align="center">
+  <img src="img/Experiment341/giraph_large_performance.png">
+  <br>
+  <em>Giraph在大规模数据集下的迭代结果</em>
+</p>
+
+**分析：**
+
+  * 小规模数据集下的表现：启动成本为主导
+    - 结果概况：小规模数据集下，Giraph的Setup耗时为16.4秒，随后的单次超步（Superstep）计算仅需约1.9秒。Setup阶段的时间约为单次计算时间的8倍以上。
+    - 讨论：此时Giraph的性能主要受限于一次性的图构建成本。虽然BSP模型的内存计算极快，但在计算开始前，必须将所有顶点和边从磁盘并行加载到内存并建立拓扑结构。对于小图而言，这种“冷启动”时间远超算法快速收敛所需的计算时间，体现了图计算系统在小规模任务上的“预热”代价。
+  * 扩展至中、大规模数据集的变化：高计算密度与优异的扩展性
+    - 结果概况：随着数据规模扩大，Giraph的Setup时间并未显著增长，而单次超步时间线性增长至约21.82秒。尽管如此，流水线依然保持着极高的计算密度，超步之间紧密衔接，无明显间隙。
+    - 讨论：随着图规模增大，Setup的时间被后续几十轮的迭代计算有效分摊，不再是主要矛盾。系统能够充分利用内存带宽和网络通信能力，维持高效的连续计算流。只要内存足够，其在处理大规模复杂图结构时具有绝对优势。
 
 #### 3.4.2 数据规模扩展性测试
 
-在不同规模数据集上运行PageRank，以观察性能变化趋势。
+依次使用小规模、中规模、大规模节点的数据集运行算法，分析数据量增加时，两者性能下降的趋势。
 
-**[此处插入图表：总运行时间对比柱状图 (X轴为数据集大小，Y轴为时间)]**
+<p align="center">
+  <img src="img/Experiment342/vs_alltime.png">
+  <br>
+  <em>MapReduce和Giraph在不同规模数据集下的总运行时间对比示意图</em>
+</p>
 
-**分析：**
-*   随着数据量从Web-Google增加到LiveJournal，MapReduce的运行时间呈近乎线性的增长，主要受限于磁盘I/O吞吐量。
-*   Giraph在内存充足的情况下，性能表现极其优异，增长曲线平缓。但在处理超大规模图（如接近内存极限）时，需要注意内存溢出风险。
+<p align="center">
+  <img src="img/Experiment342/vs_avg.png">
+  <br>
+  <em>MapReduce和Giraph在不同规模数据集下的平均迭代时间对比示意图</em>
+</p>
 
 #### 3.4.3 系统资源监控分析
 
@@ -215,9 +239,9 @@ Node展示：
   </table>
 </p>
 
-* **MapReduce：** 整体曲线呈现典型的“波浪形”，内存使用量反复震荡，形成密集的锯齿状波浪。由于 MapReduce 无法在内存中保留跨任务的数据，PageRank 的每一次迭代都对应一个独立的 Job。因此，系统必须反复经历“启动 JVM -> 申请内存 -> 计算 -> Job 结束销毁 JVM/释放内存”的过程。每一次内存的“波谷”都代表了上一轮迭代的结束和状态的清空，下一轮必须重新从磁盘加载数据。
-* **Giraph：** 整体曲线呈现“梯形”或“高位平稳”态势，由于数据倾斜比较严重，Giraph 的node100内存曲线在作业开始后迅速攀升，其他节点也有攀升，但幅度相比node100较小，随后都锁定在高位保持平稳，中间没有任何回落，直到 360 秒作业结束才垂直归零。这体现了 Giraph 有状态（Stateful）及内存驻留 的特性。系统只需在初始阶段将 Slovakia 图数据加载进内存一次，随后的所有计算超步都直接复用驻留在 RAM 中的图结构，无需反复读写磁盘或重启容器，直到整个应用彻底终止。
-* **总结：** 这两张图的形态差异直观地解释了性能差距：MapReduce 的“波浪”意味着它在不断地“遗忘”并重新读取数据，将大量时间消耗在了 I/O 和进程启停上；而 Giraph 的“平稳”意味着它“记住”了数据，从而实现了比 MapReduce 快 10 倍以上的计算效率。
+* **MapReduce：** 整体曲线呈现典型的“波浪形”，内存使用量反复震荡，形成密集的锯齿状波浪。由于MapReduce无法在内存中保留跨任务的数据，PageRank的每一次迭代都对应一个独立的Job。因此，系统必须反复经历“启动JVM -> 申请内存 -> 计算 -> Job结束销毁JVM/释放内存”的过程。每一次内存的“波谷”都代表了上一轮迭代的结束和状态的清空，下一轮必须重新从磁盘加载数据。
+* **Giraph：** 整体曲线呈现“梯形”或“高位平稳”态势，由于数据倾斜比较严重，Giraph的node100内存曲线在作业开始后迅速攀升，其他节点也有攀升，但幅度相比node100较小，随后都锁定在高位保持平稳，中间没有任何回落，直到360秒作业结束才垂直归零。这体现了Giraph有状态（Stateful）及内存驻留 的特性。系统只需在初始阶段将Slovakia图数据加载进内存一次，随后的所有计算超步都直接复用驻留在RAM中的图结构，无需反复读写磁盘或重启容器，直到整个应用彻底终止。
+* **总结：** 这两张图的形态差异直观地解释了性能差距：MapReduce的“波浪”意味着它在不断地“遗忘”并重新读取数据，将大量时间消耗在了I/O和进程启停上；而Giraph的“平稳”意味着它“记住”了数据，从而实现了比MapReduce快10倍以上的计算效率。
 
 
 ##### Giraph对比
@@ -246,9 +270,7 @@ Node展示：
 右侧实验虽然成功完成，但暴露了极端的内存需求。由于数据倾斜，Node102 的内存占用量一路攀升并突破 6GB，远超其他节点。该作业之所以能够运行至结束，是因为负载过重的图数据分片分到了内存较高的node100中，如果被分到内存较小的Node104 ，则必将在运行中途因内存耗尽而崩溃。这体现了 Giraph 作业的成功运行严格依赖于单节点内存容量必须覆盖最大数据分片的峰值需求。
 
 * 总结：Giraph 对内存容量的苛刻要求
-综合对比两图可得出结论：Giraph 在内存资源管理上呈现出显著的“全有或全无”特征。如果硬件内存无法完全容纳图数据及计算过程中的消息缓存，Giraph 将不具备任何容错弹性，直接导致计算溃败。因此，充足且留有冗余的内存资源是保障 Giraph 稳定运行的必要先决条件。
-
-**[此处插入图表：内存与 I/O 监控时序图]**
+综合对比两图可得出结论：Giraph在内存资源管理上呈现出显著的“全有或全无”特征。如果硬件内存无法完全容纳图数据及计算过程中的消息缓存，Giraph将不具备任何容错弹性，直接导致计算溃败。因此，充足且留有冗余的内存资源是保障Giraph稳定运行的必要先决条件。
 
 **分析：**
 *   **I/O模式差异：** MapReduce呈现典型的“锯齿状”磁盘I/O波峰，对应每轮Map的读取和Reduce的写入。Giraph则在计算过程中磁盘I/O极低，但在Superstep同步阶段会出现网络流量峰值。
@@ -258,11 +280,13 @@ Node展示：
 
 ### 3.5 结论
 
-1.  **效率差异显著：** Giraph得益于BSP模型和内存常驻机制，避免了MapReduce频繁的磁盘I/O和JVM启动开销，在图迭代计算任务上比MapReduce快**一个数量级**（通常 10-50 倍）。
-2.  **适用场景不同：**
-    *   **Giraph** 适合需多次迭代的复杂图算法，但对集群内存资源有硬性要求（图数据需能放入内存）。
-    *   **MapReduce** 虽然速度慢，但基于磁盘的特性使其具有极强的容错性和对超大数据集（超出内存限制）的处理能力，适合一次性ETL或非迭代任务。
-3.  **架构权衡：** 实验验证了从“以磁盘为中心”向“以内存为中心”的计算范式转变，能够显著提升大规模图处理的性能。
+1. 性能方面
+
+实验结果表明，在图迭代计算任务中，Giraph的整体性能显著优于MapReduce，且随着数据集规模的扩大，Giraph展现了极高的计算密度，有效克服了MapReduce随迭代次数增加而线性增长的时间成本。
+
+2. 稳定性方面
+
+资源监控显示，MapReduce呈现“锯齿状”的资源波动，虽效率受限，但具备基于磁盘溢写的强容错性，适合资源受限环境。Giraph则呈现“梯形”的高位内存占用，体现了典型的“以空间换时间”策略。然而，实验中Giraph因数据倾斜导致的节点崩溃现象表明，其对内存容量具有“全有或全无”的刚性需求，缺乏平滑降级机制。综上所述，Giraph是高性能图计算的首选，但必须以充足且冗余的内存资源作为保障。
 
 ---
 
