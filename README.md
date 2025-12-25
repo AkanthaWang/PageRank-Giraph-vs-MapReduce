@@ -226,7 +226,7 @@ Node展示：
   <table>
     <tr>
       <td align="center">
-        <img src="img/MapReduce_S1_Figure/memory_used_gb.png">
+        <img src="img/Giraph_S1_Figure/memory_used_gb.png">
         <br>
         <em>Giraph Memory使用(Web-Google)</em>
       </td>
