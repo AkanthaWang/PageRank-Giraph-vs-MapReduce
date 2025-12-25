@@ -113,7 +113,7 @@
 
 Hadoop集群：
 <p align="center">
-  <img src="img/init/hadoop.jpg">
+  <img src="img/init/hadoop.png">
   <br>
   <em>Hadoop集群展示</em>
 </p>
