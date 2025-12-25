@@ -198,8 +198,55 @@ Node展示：
 
 ##### Memory监控对比
 
-*   **MapReduce：** 内存使用呈波浪形，Job结束即释放，不依赖内存容量大小。
-*   **Giraph：** 内存使用呈“梯形”，加载数据后一直维持高位直到作业结束，说明Giraph是典型的“空间换时间”策略，其性能和有效性取决
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="img/MapReduce_S2_Figure/memory_used_gb.png">
+        <br>
+        <em>MapReduce Memory使用</em>
+      </td>
+      <td align="center">
+        <img src="img/Giraph_S2_Figure/memory_used_gb.png" >
+        <br>
+        <em>Giraph Memory使用</em>
+      </td>
+    </tr>
+  </table>
+</p>
+
+* **MapReduce：** 整体曲线呈现典型的“波浪形”，内存使用量反复震荡，形成密集的锯齿状波浪。由于 MapReduce 无法在内存中保留跨任务的数据，PageRank 的每一次迭代都对应一个独立的 Job。因此，系统必须反复经历“启动 JVM -> 申请内存 -> 计算 -> Job 结束销毁 JVM/释放内存”的过程。每一次内存的“波谷”都代表了上一轮迭代的结束和状态的清空，下一轮必须重新从磁盘加载数据。
+* **Giraph：** 整体曲线呈现“梯形”或“高位平稳”态势，由于数据倾斜比较严重，Giraph 的node100内存曲线在作业开始后迅速攀升，其他节点也有攀升，但幅度相比node100较小，随后都锁定在高位保持平稳，中间没有任何回落，直到 360 秒作业结束才垂直归零。这体现了 Giraph 有状态（Stateful）及内存驻留 的特性。系统只需在初始阶段将 Slovakia 图数据加载进内存一次，随后的所有计算超步都直接复用驻留在 RAM 中的图结构，无需反复读写磁盘或重启容器，直到整个应用彻底终止。
+* **总结：** 这两张图的形态差异直观地解释了性能差距：MapReduce 的“波浪”意味着它在不断地“遗忘”并重新读取数据，将大量时间消耗在了 I/O 和进程启停上；而 Giraph 的“平稳”意味着它“记住”了数据，从而实现了比 MapReduce 快 10 倍以上的计算效率。
+
+
+##### Giraph对比
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="img/MapReduce_S1_Figure/memory_used_gb.png">
+        <br>
+        <em>Giraph Memory使用(Web-Google)</em>
+      </td>
+      <td align="center">
+        <img src="img/Giraph_S2_Figure/memory_used_gb.png" >
+        <br>
+        <em>Giraph Memory使用(Slovakia)</em>
+      </td>
+    </tr>
+  </table>
+</p>
+
+* Web-Google 实验：资源触顶导致的作业崩溃
+在左侧的实验中，由于Node104 和 Node105 内存较小，且因为数据倾斜分到了包含高入度节点的图分区，此时，所需内存超过了容器的物理内存上限，因此其内存使用曲线在攀升至约 3.3GB 附近后出现停滞，随后发生垂直断崖式下跌。由于 Giraph 是纯内存计算框架，缺乏类似 MapReduce 的磁盘溢写机制来缓解内存压力，一旦达到物理阈值，系统无法通过“以时间换空间”的方式降级运行，而是直接触发内存溢出，导致进程被强制终止，作业最终失败。这直观地体现了 Giraph 在资源不足时的脆弱性。
+
+* Slovakia 实验：高内存消耗下的被动承载
+右侧实验虽然成功完成，但暴露了极端的内存需求。由于数据倾斜，Node102 的内存占用量一路攀升并突破 6GB，远超其他节点。该作业之所以能够运行至结束，是因为负载过重的图数据分片分到了内存较高的node100中，如果被分到内存较小的Node104 ，则必将在运行中途因内存耗尽而崩溃。这体现了 Giraph 作业的成功运行严格依赖于单节点内存容量必须覆盖最大数据分片的峰值需求。
+
+* 总结：Giraph 对内存容量的苛刻要求
+综合对比两图可得出结论：Giraph 在内存资源管理上呈现出显著的“全有或全无”特征。如果硬件内存无法完全容纳图数据及计算过程中的消息缓存，Giraph 将不具备任何容错弹性，直接导致计算溃败。因此，充足且留有冗余的内存资源是保障 Giraph 稳定运行的必要先决条件。
 
 **[此处插入图表：内存与 I/O 监控时序图]**
 
