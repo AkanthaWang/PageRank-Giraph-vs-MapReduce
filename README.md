@@ -2,16 +2,62 @@
 
 ```
 .
-├── code/                   # 所有实验代码
-│   ├── mapreduce/          # MapReduce 实现代码
-│   └── giraph/             # Giraph 实现代码
-└── README.md               # 项目核心文档
+├── code/                   # 核心实现代码
+│   ├── giraph/             # Giraph版本的PageRank算法实现
+│   └── mapreduce/          # MapReduce版本的PageRank算法实现
+│
+├── Analysis/               # 实验数据、脚本与结果分析
+│   │
+│   ├── Giraph_S1/          # Giraph小规模数据集场景(Web-Google)
+│   │   ├── metrics_node100.csv # 节点100的资源监控原始数据
+│   │   ├── metrics_node101.csv # ...
+│   │   ├── ...
+│   │   └── metrics_node105.csv # 节点105的资源监控原始数据
+│   │
+│   ├── Giraph_S1_Figure/   # Giraph小规模数据集场景的分析图表与摘要
+│   │   ├── cpu_iowait.png       # CPU的IO等待时间图
+│   │   ├── cpu_usage.png        # CPU利用率图
+│   │   ├── disk_write_mbs.png   # 写磁盘监控图
+│   │   ├── memory_used_gb.png   # 内存使用量图
+│   │   ├── network_send_mbs.png # 网络使用图
+│   │   └── summary.csv          # 该场景下性能指标的摘要数据
+│   │
+│   ├── Giraph_S2/          # Giraph中规模数据集场景(soc-Pokec)
+│   ├── Giraph_S2_Figure/   # Giraph中规模数据集场景的分析图表与摘要
+│   ├── Giraph_S3/          # Giraph大规模数据集场景(LiveJournal)
+│   ├── Giraph_S3_Figure/   # Giraph大规模数据集场景的分析图表与摘要
+│   │
+│   ├── MapReduce_S1/       # MapReduce小规模数据集场景(Web-Google)
+│   │   ├── metrics_node100.csv
+│   │   ├── ...
+│   │   ├── metrics_node105.csv
+│   │   └── performance_report.txt # MapReduce性能分析脚本生成的文本报告
+│   │
+│   ├── MapReduce_S1_Figure/ # MapReduce小规模数据集场景的分析图表与分析报告
+│   │   ├── cpu_iowait.png
+│   │   ├── cpu_usage.png
+│   │   ├── disk_write_mbs.png
+│   │   ├── memory_used_gb.png
+│   │   ├── network_send_mbs.png
+│   │   └── summary.csv
+│   │
+│   ├── MapReduce_S2/        # MapReduce中规模数据集场景(soc-Pokec)
+│   ├── MapReduce_S2_Figure/ # MapReduce中规模数据集场景的分析图表与分析报告
+│   ├── MapReduce_S3/        # MapReduce大规模数据集场景(LiveJournal)
+│   ├── MapReduce_S3_Figure/ # MapReduce大规模数据集场景的分析图表与分析报告
+│   │
+│   ├── cluster_monitor.sh            # 用于在集群各节点收集资源利用率数据
+│   ├── plot_cpu.py                   # 绘制CPU使用率、IO等待等相关图表
+│   ├── plot_gantte_giraph.py         # 绘制Giraph任务执行的甘特图
+│   └── plot_mapreduce_performance.py # 分析MapReduce日志并生成性能图表和报告
+│
+└── README.md               # 项目核心说明文档
 ```
 
-## 研究目的
+## 1. 研究目的
 比较Giraph和MapReduce运行PageRank算法的差异。
 
-## 研究内容
+## 2. 研究内容
 对比分析Giraph和MapReduce在执行PageRank图迭代计算任务时的差异。
 
 **具体研究内容包括：**
@@ -22,11 +68,11 @@
     *   **资源利用特征：** 分析两者在CPU、内存、磁盘 I/O和网络带宽上的占用趋势。
 3.  **性能与扩展性评估：** 在不同规模的数据集上，量化分析两者的运行时间、加速比及系统瓶颈。
 
-## 实验
+## 3. 实验
 
-### 实验环境
+### 3.1 实验环境
 
-#### 硬件配置
+#### 3.1.1 硬件配置
 集群由6个节点组成（1 Master + 5 Slaves），采用虚拟机混合部署模式。
 *   **节点数量：** 6 节点
 *   **CPU：** 4 核 (vCPU) / 节点
@@ -34,15 +80,15 @@
 *   **存储：** 50 GB SSD / 节点
 *   **网络带宽：** 1 Gbps (桥接模式，千兆局域网)
 
-#### 软件环境
+#### 3.1.2 软件环境
 *   **操作系统：** CentOS Linux release 7.x
 *   **JDK版本：** Java 1.8.0_291
 *   **Hadoop版本：** Apache Hadoop 2.10.1 (YARN + HDFS)
 *   **Giraph版本：** Apache Giraph 1.3.0
 
-### 实验负载
+### 3.2 实验负载
 
-#### 1. 数据集
+#### 3.2.1 数据集
 
 本实验使用[Stanford Large Network Dataset Collection](https://snap.stanford.edu/data/index.html) 的真实图数据集，覆盖从小规模到大规模的多种场景。
 
@@ -53,38 +99,38 @@
 | 大    | **LiveJournal**              | LiveJournal用户好友关系图 | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz](https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz)</div>               | 4.8M | 69M  | 248MB(1.01GB) |
 | 大    | **Twitter follower network** | Twitter用户关注关系图     | <div style="width: 150px; overflow-wrap: break-word;">[https://snap.stanford.edu/data/twitter-2010.txt.gz](https://snap.stanford.edu/data/twitter-2010.txt.gz)</div>                       | 41M  | 1.4B | 5.1GB         |
 
-#### 2. 工作负载
+#### 3.2.2 工作负载
 
 **PageRank参数设置：**  **此处待修正和补充**
 *   **阻尼系数 (Damping Factor)：** 0.85
 *   **最大迭代次数 (Max Iterations)：** 10 或 11 (根据收敛情况)
 *   **收敛阈值：** 0.0001
 
-### 实验步骤
+### 3.3 实验步骤
 
-#### 1. 环境部署与验证
+#### 3.3.1 环境部署与验证
 启动Hadoop集群与Giraph环境，确保节点间通信正常。
 
 **[此处插入截图：Hadoop JPS 进程截图（包含 NameNode, ResourceManager, DataNode, NodeManager）]**
 *图 1：集群节点进程运行状态*
 
-#### 2. MapReduce PageRank 运行
+#### 3.3.2 MapReduce PageRank 运行
 执行MapReduce作业，监控Job链的执行情况。由于MapReduce每次迭代是一个独立的Job，控制台会输出一系列Job ID。
 
 **[此处插入截图：MapReduce 连续提交 Job 的控制台日志截图]**
 *图 2：MapReduce迭代过程中的Job提交日志*
 
-#### 3. Giraph PageRank 运行
+#### 3.3.3 Giraph PageRank 运行
 执行Giraph作业，监控Superstep的执行进度。
 
 **[此处插入截图：Giraph 作业执行成功的最终日志（显示 Total time 和 Supersteps 信息）]**
 *图 3：Giraph作业执行完成信息（Web-Google数据集示例：Total time ≈ 29.4s）*
 
-### 实验结果与分析
+### 3.4 实验结果与分析
 
 **<u>待贴图，MapReduce和Giraph两种分布式架构算法执行流程</u>**
 
-#### 1. 迭代开销与总耗时对比
+#### 3.4.1 迭代开销与总耗时对比
 
 在中等规模数据集下，我们分别记录MapReduce每次迭代（即每个 Job）的启动、Map、Shuffle和Reduce时间，以及Giraph运行整个作业的Setup时间、每个Superstep的计算时间、通信时间。
 
@@ -95,7 +141,7 @@
 *   **Giraph的优势：** 相比之下，Giraph仅在作业开始时加载一次图数据（Graph Loading）。随后的Supersteps中，所有计算均在内存中进行，且利用BSP模型仅在Superstep结束时进行必要的网络同步。
 *   **数据佐证：** 在Web-Google数据集上，Giraph完成11轮迭代仅耗时 **29.4秒**，平均每轮计算+同步仅需 **1.5-2秒**；而MapReduce单次迭代的启动和I/O开销往往就超过了这一数值。
 
-#### 2. 数据规模扩展性测试
+#### 3.4.2 数据规模扩展性测试
 
 在不同规模数据集上运行PageRank，以观察性能变化趋势。
 
@@ -105,7 +151,7 @@
 *   随着数据量从Web-Google增加到LiveJournal，MapReduce的运行时间呈近乎线性的增长，主要受限于磁盘I/O吞吐量。
 *   Giraph在内存充足的情况下，性能表现极其优异，增长曲线平缓。但在处理超大规模图（如接近内存极限）时，需要注意内存溢出风险。
 
-#### 3. 系统资源监控分析
+#### 3.4.3 系统资源监控分析
 
 通过监控工具记录作业运行期间的资源使用情况。
 
@@ -117,7 +163,7 @@
     *   **MapReduce：** 内存使用呈波浪形，Job结束即释放，不依赖内存容量大小。
     *   **Giraph：** 内存使用呈“梯形”，加载数据后一直维持高位直到作业结束，说明Giraph是典型的“空间换时间”策略，其性能和有效性取决于内存容量。
 
-### 结论
+### 3.5 结论
 
 1.  **效率差异显著：** Giraph得益于BSP模型和内存常驻机制，避免了MapReduce频繁的磁盘I/O和JVM启动开销，在图迭代计算任务上比MapReduce快**一个数量级**（通常 10-50 倍）。
 2.  **适用场景不同：**
@@ -127,7 +173,7 @@
 
 ---
 
-## 小组分工
+## 4. 小组分工
 
 | 姓名        | 学号 | 具体工作与贡献 | 贡献度排序 |
 |:----------| :--- | :--- | :--- |
