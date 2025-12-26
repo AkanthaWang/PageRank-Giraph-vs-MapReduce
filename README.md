@@ -174,31 +174,31 @@ Node展示：
 
 ### 3.4 实验结果与分析
 
-#### 3.4.1 迭代开销与总耗时对比
+#### 3.4.1 迭代开销
 
-在小、中、大三种规模数据集下，我们分别记录MapReduce每次迭代的启动、Map、Reduce(含shuffle)和IO执行时间，以及Giraph运行整个作业的Setup、每个Superstep的运行时间。
+在小、中、大三种规模数据集下，我们分别记录MapReduce前4次迭代的启动、Map、Reduce(含shuffle)和IO执行时间，以及Giraph运行整个作业的Setup、前4个Superstep的运行时间。
 
 **Mapreduce**
 <p align="center">
   <img src="img/Experiment341/mapreduce_small_performance.png">
   <br>
-  <em>MapReduce在小规模数据集下的迭代结果</em>
+  <em>MapReduce在小规模数据集下的前4轮迭代结果</em>
 </p>
 
 <p align="center">
   <img src="img/Experiment341/mapreduce_media_performance.png">
   <br>
-  <em>MapReduce在中规模数据集下的迭代结果</em>
+  <em>MapReduce在中规模数据集下的前4轮迭代结果</em>
 </p>
 
 <p align="center">
   <img src="img/Experiment341/mapreduce_large_performance.png">
   <br>
-  <em>MapReduce在大规模数据集下的迭代结果</em>
+  <em>MapReduce在大规模数据集下的前4轮迭代结果</em>
 </p>
 
 * 小规模数据集下，MapReduce 的时间流水线呈现出显著的“低计算密度”特征。IO占比最为突出，显著长于Map和Reduce阶段。
-* 随着数据规模扩展至大规模，图表中几乎看不到黄色的 IO 条带，取而代之的是极宽的 Map 和 Reduce 计算条带，总迭代时间大幅拉长（达到约 110秒），但时间主要在计算阶段中。
+* 随着数据规模扩展至大规模，图表中几乎看不到黄色的 IO 条带，取而代之的是极宽的Map和Reduce计算条带，总迭代时间大幅拉长，但时间主要在计算阶段中。
 
 **分析：**
 
