@@ -19,8 +19,8 @@ public class PageRankVertex extends BasicComputation<LongWritable, DoubleWritabl
         final int maxIterations = getConf().getInt(PageRankMasterCompute.CONF_MAX_ITER, 10);
 
         if (getSuperstep() == 0) {
-            // 初始化
-            double initialValue = 1.0;
+            // 初始化为均匀分布 1/N，与 NetworkX 对齐
+            double initialValue = 1.0 / (double) totalVertices;
 
             vertex.setValue(new DoubleWritable(initialValue));
 
@@ -43,8 +43,7 @@ public class PageRankVertex extends BasicComputation<LongWritable, DoubleWritabl
             vertex.setValue(new DoubleWritable(newPageRank));
 
             double delta = Math.abs(newPageRank - oldPageRank);
-            long scaledDelta = (long) (delta * PageRankMasterCompute.SCALE_FACTOR_LONG);
-            aggregate(PageRankMasterCompute.AGG_PR_DIFF_SUM, new LongWritable(scaledDelta));
+            aggregate(PageRankMasterCompute.AGG_PR_DIFF_SUM, new DoubleWritable(delta));
 
             // 聚合每一轮的 PR 总和
             aggregate(PageRankMasterCompute.AGG_TOTAL_PR, new DoubleWritable(newPageRank));
