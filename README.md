@@ -249,8 +249,8 @@ Node展示：
   <em>MapReduce和Giraph在不同规模数据集下的平均迭代时间对比示意图</em>
 </p>
 
-* 从总运行时间来看，Giraph的效率较MapReduce高。以大规模数据集为例，MapReduce的总耗时高达629秒，而Giraph仅需170秒，性能提升约为3.7倍。
-* 从平均单次迭代/超步时间来看，MapReduce的单次迭代耗时（约131秒）远高于Giraph的平均超步耗时（约17秒）。
+* 从总运行时间来看，Giraph的效率较MapReduce高。以大规模数据集为例，MapReduce的总耗时高达629秒，而Giraph仅需170秒。
+* 从平均单次迭代/超步时间来看，以大规模数据集为例，MapReduce的单次迭代耗时（约131秒）远高于Giraph的平均超步耗时（约17秒），Giraph的迭代性能约为MapReduce的7.7倍。
 
 **分析：** 
 * **MapReduce的局限性**：MapReduce必须在每次迭代结束时将中间结果写入磁盘（HDFS），并在下一次迭代开始时重新读取和Shuffle。这种频繁的磁盘I/O开销和序列化/反序列化成本，导致了图中所示的高昂平均迭代时间。
