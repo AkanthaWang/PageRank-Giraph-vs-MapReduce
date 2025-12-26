@@ -1,6 +1,6 @@
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\GraphBuilderMapper.java
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\GraphBuilderReducer.java
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankDriver.java
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankMapper.java
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankReducer.java
-D:\ECNU\Class\DaseBigData\PageRankMapReduce\src\main\java\edu\practice\pagerank\PerformanceMonitor.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\GraphBuilderMapper.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\GraphBuilderReducer.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankDriver.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankMapper.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\PageRankReducer.java
+D:\Github\PageRank-Giraph-vs-MapReduce\code\PageRankMapReduce\src\main\java\edu\practice\pagerank\PerformanceMonitor.java

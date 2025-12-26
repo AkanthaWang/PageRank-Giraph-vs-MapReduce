@@ -33,8 +33,8 @@ public class PageRankDriver implements Tool {
     public static final String TOTAL_NODES_KEY = "pagerank.total.nodes";
     // 用于传递悬挂节点 PageRank 总和的配置键
     public static final String DANGLING_PR_SUM_KEY = "pagerank.dangling.sum";
-    // 放大倍数
-    public static final long SCALE_FACTOR_LONG = 1_000_000_000L;
+    // 放大倍数（提高精度，减小被四舍五入为 0 的概率）
+    public static final long SCALE_FACTOR_LONG = 1_000_000_000_000L; // 1e12
     // 用于检测收敛的阈值（初始化）
     public static final double CONVERGENCE_THRESHOLD = 1.0e-6;
     // 悬挂节点 PageRank 求和计数器组名和计数器名
@@ -67,7 +67,8 @@ public class PageRankDriver implements Tool {
         int maxIterations = (args.length >= 3) ? Integer.parseInt(args[2]) : 10;
         double dampingFactor = (args.length >= 4) ? Double.parseDouble(args[3]) : 0.85;
         double convergenceThreshold = (args.length >= 5) ? Double.parseDouble(args[4]) : CONVERGENCE_THRESHOLD;
-        System.out.println("配置参数 - 迭代次数: " + maxIterations + ", 阻尼系数: " + dampingFactor + ", 收敛阈值: " + convergenceThreshold);
+        int minIterations = (args.length >= 6) ? Integer.parseInt(args[5]) : 5; // 最少迭代次数，避免首轮早停
+        System.out.println("配置参数 - 迭代次数: " + maxIterations + ", 阻尼系数: " + dampingFactor + ", 收敛阈值: " + convergenceThreshold + ", 最少迭代: " + minIterations);
 
         // 文件系统实例与输入路径存在性校验
         FileSystem fs = FileSystem.get(getConf());
@@ -97,8 +98,20 @@ public class PageRankDriver implements Tool {
         getConf().setLong(TOTAL_NODES_KEY, totalNodes);
         System.out.println("成功初始化，总节点数 N = " + totalNodes);
 
+        // 将初始 PR 归一化为 1/N（生成 iteration_0_uniform）
+        Path normalizedGraphInput = normalizeInitialPRToUniform(graphInput, totalNodes);
+        if (normalizedGraphInput != null) {
+            graphInput = normalizedGraphInput;
+            System.out.println("已将初始 PR 归一化为 1/N，使用目录: " + graphInput);
+        } else {
+            System.err.println("警告: 初始 PR 归一化失败，继续使用原始 iteration_0（初值为 1.0）");
+        }
+
         // --- Step 2: 运行 PageRank 迭代 ---
-        getConf().setDouble(DANGLING_PR_SUM_KEY, 0.0);
+        // 计算第0轮（归一化后）中的悬挂质量总和，确保第1轮迭代与 NetworkX 对齐
+        double initialDanglingSum = computeInitialDanglingSum(graphInput);
+        getConf().setDouble(DANGLING_PR_SUM_KEY, initialDanglingSum);
+        System.out.printf("初始化悬挂质量 DanglingSum(迭代前): %.15f\n", initialDanglingSum);
 
         long iterStartTime = System.currentTimeMillis();
         int finalIteration = maxIterations;
@@ -195,7 +208,7 @@ public class PageRankDriver implements Tool {
             long scaledDiffSum = counters.findCounter(PageRankCounter.PR_DIFF_SUM).getValue();
             double avgDiff = (double) scaledDiffSum / SCALE_FACTOR_LONG / (double) totalNodes;
             System.out.printf("   > 第 %d 次迭代平均 PR 变化: %.12e\n", (i+1), avgDiff);
-            if (avgDiff <= convergenceThreshold) {
+            if ((i + 1) >= minIterations && avgDiff <= convergenceThreshold) {
                 converged = true;
                 finalIteration = i + 1;
                 System.out.println("   > 达到收敛阈值，提前停止。");
@@ -372,6 +385,92 @@ public class PageRankDriver implements Tool {
 
     private String formatSeconds(long elapsedMs) {
         return String.format("%.3f", elapsedMs / 1000.0);
+    }
+
+    /**
+     * 将预处理输出 iteration_0 的初始 PR 值统一改为 1/N，并输出到新的目录 iteration_0_uniform。
+     * 返回新的目录路径；如失败返回 null。
+     */
+    private Path normalizeInitialPRToUniform(Path sourceDir, long totalNodes) {
+        try {
+            if (totalNodes <= 0) return null;
+            double uniform = 1.0 / (double) totalNodes;
+
+            FileSystem fs = sourceDir.getFileSystem(getConf());
+            if (!fs.exists(sourceDir)) return null;
+
+            Path destDir = new Path(sourceDir.getParent(), "iteration_0_uniform");
+            if (fs.exists(destDir)) fs.delete(destDir, true);
+            fs.mkdirs(destDir);
+
+            FileStatus[] statuses = fs.listStatus(sourceDir);
+            for (FileStatus status : statuses) {
+                if (!status.isFile() || !status.getPath().getName().startsWith("part")) continue;
+
+                Path destFile = new Path(destDir, status.getPath().getName());
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(status.getPath()), java.nio.charset.StandardCharsets.UTF_8));
+                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fs.create(destFile, true), java.nio.charset.StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) continue;
+                        String[] parts = line.split("\t", 2);
+                        if (parts.length < 2) continue;
+
+                        String val = parts[1];
+                        int sep = val.indexOf("|");
+                        if (sep < 0) continue; // 非法行，跳过
+                        String outlinks = val.substring(sep + 1);
+                        writer.write(parts[0]);
+                        writer.write('\t');
+                        writer.write(String.format(java.util.Locale.ROOT, "%.10f", uniform));
+                        writer.write('|');
+                        writer.write(outlinks);
+                        writer.newLine();
+                    }
+                }
+            }
+            return destDir;
+        } catch (Exception e) {
+            System.err.println("规范化初始 PR 失败: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 读取预处理输出（iteration_0），计算初始悬挂节点的 PageRank 总和。
+     * 公式中第1轮迭代需要上一轮的悬挂质量，本方法保证与 NetworkX 的处理一致。
+     *
+     * 格式：每行形如 NodeID\tPR|Outlink1,Outlink2,...，当 '|' 后为空表示悬挂节点。
+     */
+    private double computeInitialDanglingSum(Path sourceDir) throws IOException {
+        FileSystem fs = sourceDir.getFileSystem(getConf());
+        if (!fs.exists(sourceDir)) return 0.0;
+
+        double sum = 0.0;
+        FileStatus[] statuses = fs.listStatus(sourceDir);
+        for (FileStatus status : statuses) {
+            if (!status.isFile() || !status.getPath().getName().startsWith("part")) continue;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(status.getPath()), java.nio.charset.StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty()) continue;
+                    String[] parts = line.split("\t", 2);
+                    if (parts.length < 2) continue;
+                    String val = parts[1];
+                    int sep = val.indexOf("|");
+                    if (sep < 0) continue;
+                    String prStr = val.substring(0, sep).trim();
+                    String outlinks = val.substring(sep + 1).trim();
+                    if (outlinks.isEmpty()) {
+                        try {
+                            double pr = Double.parseDouble(prStr);
+                            sum += pr;
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+            }
+        }
+        return sum;
     }
 
     private static class NodeScore {

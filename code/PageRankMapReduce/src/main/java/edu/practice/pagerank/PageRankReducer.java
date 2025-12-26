@@ -121,7 +121,9 @@ public class PageRankReducer extends Reducer<Text, Text, Text, Text> {
         // 6. 计算本节点的 PR 变化并累加到全局计数器，用于收敛检测
         double diff = Math.abs(newPageRank - previousPR);
         try {
-            context.getCounter(PageRankDriver.PageRankCounter.PR_DIFF_SUM).increment(Math.round(diff * PageRankDriver.SCALE_FACTOR_LONG));
+            long scaled = (long) Math.ceil(diff * PageRankDriver.SCALE_FACTOR_LONG);
+            if (scaled < 0) scaled = 0;
+            context.getCounter(PageRankDriver.PageRankCounter.PR_DIFF_SUM).increment(scaled);
         } catch (Exception e) {
             // 安全防护：计数器可能在某些环境不可用，忽略异常
         }
